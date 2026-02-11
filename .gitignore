@@ -1,0 +1,64 @@
+# 忽略data文件夹
+data/
+
+# 忽略ptuning三个子文件夹中的output文件夹
+ptuning/CLASSIFY_PTUNING/output/
+ptuning/KEYWORDS_PTUNING/output/
+ptuning/NL2SQL_PTUNING/output/
+
+# 忽略lora文件夹中三个子文件中的save文件夹
+lora/CLASSIFY_PTUNING/saves/
+lora/KEYWORDS_TUNING/saves/
+lora/NL2SQL_TUNING/saves/
+
+# 忽略multi_lora_server文件夹
+lora/multi_lora_server/
+
+# 忽略image文件夹
+image/
+
+# 忽略notes文件
+notes1.md
+notes2.md
+
+# 忽略其他可能的大文件和文件夹
+*.pdf
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.tar.bz2
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+venv/
+env/
+.env/
+
+# 忽略模型文件
+pretrained_models/
+models/
+
+# 忽略日志文件
+*.log
+logs/
+
+# 忽略配置文件
+*.env
+.env.local
+.env.*.local
+
+# 忽略IDE相关文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 忽略操作系统相关文件
+.DS_Store
+Thumbs.db
