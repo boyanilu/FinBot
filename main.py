@@ -32,7 +32,7 @@ def check_paths():
         with open(f'{cfg.DATA_PATH}/check/test.txt', 'r', encoding='utf-8') as f:
             print(f.readlines()[:10])
         print('Test xpdf success!')
-
+        
     print('Torch cuda available ', torch.cuda.is_available())
 
     if not os.path.exists(cfg.CLASSIFY_CHECKPOINT_PATH):

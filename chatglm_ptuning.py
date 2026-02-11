@@ -58,7 +58,7 @@ class ChatGLM_Ptuning(LLM, ABC):
                 self.model = AutoModel.from_pretrained(self.model_name, config=self.config, trust_remote_code=True)
                 self.isNL2SQL = True
             # 装载对应路径的权重
-            prefix_state_dict = torch.load(check_point_path)
+            prefix_state_dict = torch.load(check_point_path, map_location=torch.device('cpu'))
             new_prefix_state_dict = {}
             for k, v in prefix_state_dict.items():
                 if k.startswith("transformer.prefix_encoder."):
@@ -73,7 +73,19 @@ class ChatGLM_Ptuning(LLM, ABC):
             self.model = AutoModel.from_pretrained(self.model_name, trust_remote_code=True)
             self.isClassify = self.isNL2SQL = False
 
-        self.model.cuda().eval()
+        def get_device():
+            """获取可用设备"""
+            if torch.cuda.is_available():
+                return torch.device('cuda')
+            else:
+                return torch.device('cpu')
+
+        device = get_device()
+        print(f"使用设备: {device}")
+        self.model.to(device).eval()
+        # self.model.cuda().eval()
+        # if hasattr(self.model.config, 'num_layers') and not hasattr(self.model.config, 'num_hidden_layers'):
+        #     self.model.config.num_hidden_layers = self.model.config.num_layers
 
     @property
     def _llm_type(self) -> str:

@@ -361,10 +361,25 @@ class countScore():
                 type31Score = self.check_type31(per_data_type31_list)
                 type32Score = self.check_type32(per_data_type32_list)
 
-                Score1 = round((type1Score + type12Score) / (len(self.type1IdList) + len(self.type12IdList)) * 100, 4)
-                Score2 = round((type2Score + type22Score) / (len(self.type2IdList) + len(self.type22IdList)) * 100, 4)
-                Score3_1 = round(type31Score / len(self.type31IdList) * 100, 4)
-                Score3_2 = round(type32Score / len(self.type32IdList) * 100, 4)
+                # Score1 = round((type1Score + type12Score) / (len(self.type1IdList) + len(self.type12IdList)) * 100, 4)
+                # Score2 = round((type2Score + type22Score) / (len(self.type2IdList) + len(self.type22IdList)) * 100, 4)
+                # Score3_1 = round(type31Score / len(self.type31IdList) * 100, 4)
+                # Score3_2 = round(type32Score / len(self.type32IdList) * 100, 4)
+                # 计算 Score1 (Type 1 和 1-2)
+                div1 = len(self.type1IdList) + len(self.type12IdList)
+                Score1 = round((type1Score + type12Score) / div1 * 100, 4) if div1 > 0 else 0
+
+                # 计算 Score2 (Type 2-1 和 2-2)
+                div2 = len(self.type2IdList) + len(self.type22IdList)
+                Score2 = round((type2Score + type22Score) / div2 * 100, 4) if div2 > 0 else 0
+
+                # 计算 Score3_1
+                div31 = len(self.type31IdList)
+                Score3_1 = round(type31Score / div31 * 100, 4) if div31 > 0 else 0
+
+                # 计算 Score3_2
+                div32 = len(self.type32IdList)
+                Score3_2 = round(type32Score / div32 * 100, 4) if div32 > 0 else 0
 
                 Score_dict = {'type1Score': Score1, 'type2Score': Score2, 'type3-1Score': Score3_1,
                               'type3-2Score': Score3_2}
@@ -385,7 +400,7 @@ if __name__ == "__main__":
     print("Read standard from %s" % standard_path)
 
     # 预测文件路径
-    input_path = "./data/result_20240526.json" 
+    input_path = "./data/result_20260123.json" 
     print("Read predict file from %s" % input_path)
 
     out_path = "./data/test/output.json"

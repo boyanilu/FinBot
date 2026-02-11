@@ -5,6 +5,7 @@ import pandas as pd
 from loguru import logger
 from functools import cmp_to_key
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
 from config import cfg
 import re_util
 

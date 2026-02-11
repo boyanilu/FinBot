@@ -43,6 +43,61 @@ from transformers import (
 from trainer_seq2seq import Seq2SeqTrainer
 
 from arguments import ModelArguments, DataTrainingArguments
+import torch
+import transformers
+from transformers.generation import GenerationMixin
+from typing import Optional, Tuple, Union, Any
+
+# 尝试导入新的 Cache 基类，如果版本不支持则设为 None
+try:
+    from transformers.cache_utils import Cache
+except ImportError:
+    Cache = None
+
+# --- 核心补丁代码开始 ---
+
+# 1. 记录原始的方法
+orig_extract_past_from_model_output = GenerationMixin._extract_past_from_model_output
+
+def patched_extract_past_from_model_output(self, outputs: Any, standardize_cache_format: bool = False, **kwargs):
+    """
+    补丁函数：
+    1. 兼容新版 transformers 删除了 standardize_cache_format 参数的问题
+    2. 强制将新版的 Cache 对象转换回 ChatGLM 认识的 legacy tuple 格式
+    """
+    # 移除可能导致 TypeError 的参数
+    kwargs.pop("standardize_cache_format", None)
+    
+    # 获取原始输出中的 past_key_values
+    past_key_values = getattr(outputs, "past_key_values", None)
+    
+    # 如果是新版的 Cache 对象 (DynamicCache)，强制转回老的 tuple 格式
+    if Cache is not None and isinstance(past_key_values, Cache):
+        past_key_values = past_key_values.to_legacy_cache()
+    
+    return past_key_values
+
+# 2. 替换 transformers 库中的全局方法
+GenerationMixin._extract_past_from_model_output = patched_extract_past_from_model_output
+
+# 3. 针对 ChatGLM 模型的额外补丁：确保它不会在生成时因为版本检测而走错逻辑
+def patched_prepare_inputs_for_generation(
+    self, input_ids, past_key_values=None, attention_mask=None, expose_past=True, **kwargs
+):
+    # 确保在 P-tuning 场景下，past_key_values 能够被正确处理
+    if past_key_values is not None:
+        if Cache is not None and isinstance(past_key_values, Cache):
+            past_key_values = past_key_values.to_legacy_cache()
+    
+    return {
+        "input_ids": input_ids,
+        "past_key_values": past_key_values,
+        "attention_mask": attention_mask,
+    }
+
+# 注意：下面的替换需要等 model 加载后执行，或者直接在 main() 里加载模型后操作
+# --- 核心补丁代码结束 ---
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +110,9 @@ def main():
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
+    # 强制禁用梯度检查点以提速并避免CPU警告
+    training_args.gradient_checkpointing = False
+    
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -99,7 +157,7 @@ def main():
         extension,
         data_files=data_files,
         cache_dir=model_args.cache_dir,
-        use_auth_token=True if model_args.use_auth_token else None,
+        token=True if model_args.use_auth_token else None,
     )
 
     # Load pretrained model and tokenizer
@@ -108,6 +166,26 @@ def main():
     config.prefix_projection = model_args.prefix_projection
 
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
+
+    # --- Monkey Patch Start ---
+    # Fix TypeError: ChatGLMTokenizer._pad() got an unexpected keyword argument 'padding_side'
+    # This happens because newer 'datasets' or 'transformers' libraries pass 'padding_side' to _pad,
+    # but the custom ChatGLMTokenizer code (loaded from remote code) doesn't accept it.
+    if hasattr(tokenizer, "_pad"):
+        # We patch the class method to ensure all instances are fixed
+        cls = tokenizer.__class__
+        # Avoid double patching
+        if not getattr(cls, "_is_patched_for_padding_side", False):
+            original_pad = cls._pad
+            
+            def _pad_patched(self, *args, **kwargs):
+                # Remove padding_side if present
+                kwargs.pop("padding_side", None)
+                return original_pad(self, *args, **kwargs)
+            
+            cls._pad = _pad_patched
+            cls._is_patched_for_padding_side = True
+    # --- Monkey Patch End ---
 
     if model_args.ptuning_checkpoint is not None:
         # Evaluation
@@ -132,6 +210,19 @@ def main():
     else:
         # Finetune
         model = model.float()
+        
+   # === 强制移动模型到设备并添加诊断探针 ===
+    logger.warning(f"--- Forcing model to device: {training_args.device} ---")
+    model = model.to(training_args.device) # 手动将模型移动到正确的设备
+
+    try:
+        model_device = next(model.parameters()).device
+        logger.warning(f"!!! Probe: Model is now on device: {model_device} !!!")
+        if 'cuda' not in str(model_device):
+            logger.error("!!! Probe ERROR: Model failed to move to CUDA/DCU device!")
+    except Exception as e:
+        logger.error(f"!!! Probe ERROR: Failed to get model device. Error: {e}")
+    # =====================================================
 
     prefix = data_args.source_prefix if data_args.source_prefix is not None else ""
 
