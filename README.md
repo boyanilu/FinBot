@@ -17,7 +17,7 @@
 1. 确保安装了CUDA、cuDNN和PyTorch-GPU等基本库
 2. 安装项目依赖：
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements2.txt
    ```
 3. 在运行过程中，根据缺失的个别包信息，再进行安装
 
@@ -26,12 +26,21 @@
 2. 数据准备：将allpdf解压后，目录放到 `./data/` 下
 
 ### 配置文件
-修改 `config/cfg.py` 下的 `BASE_DIR` 为自己的项目绝对路径：
-```python
-BASE_DIR = "e:\Projects\python\tutorial\FinBot"
-```
+修改 `config/cfg.py` 下的 `BASE_DIR` 为自己的项目绝对路径
 
 ## 运行指南
+
+### 环境安装
+1. 确保安装了CUDA、cuDNN和PyTorch-GPU等基本库
+2. 安装项目依赖：
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. 在运行过程中，根据缺失的个别包信息，再进行安装
+
+### 模型下载
+1. 下载Qwen3-8B模型，放到目录 `./data/pretrained_models/` 下
+2. 数据准备：将allpdf解压后，目录放到 `./data/` 下
 
 ### 模型微调
 如果需要进行模型微调，可以选择以下两种方式：
@@ -44,6 +53,7 @@ BASE_DIR = "e:\Projects\python\tutorial\FinBot"
    # 测试
    bash evaluate.sh
    ```
+   观察指标预测情况，在output目录查看 `generated_predictions.txt` 的输出，是否符合预期。
 
 2. **关键词抽取微调**：
    ```bash
@@ -52,6 +62,7 @@ BASE_DIR = "e:\Projects\python\tutorial\FinBot"
    # 测试
    bash evaluate.sh
    ```
+   观察指标预测情况，在output目录查看 `generated_predictions.txt` 的输出，是否符合预期。
 
 3. **SQL生成微调**：
    ```bash
@@ -60,12 +71,13 @@ BASE_DIR = "e:\Projects\python\tutorial\FinBot"
    # 测试
    bash evaluate.sh
    ```
+   观察指标预测情况，在output目录查看 `generated_predictions.txt` 的输出，是否符合预期。
 
 #### LoRA微调
 进入lora目录分别运行对应模型的训练、预测代码。
 
 ### 主代码运行
-回到项目根目录，运行主代码：
+回到项目根目录，修改 `config/cfg.py` 下的 `BASE_DIR` 为自己的项目绝对路径，然后运行主代码：
 ```bash
 python main.py
 ```
@@ -79,6 +91,31 @@ python test_score.py
 ```
 
 预测指标在：`data/test/output.json`，包括type1, type2, type3以及加权后的总得分。
+
+## 主要代码说明
+
+### main.py
+- 包含全流程：数据下载/PDF表格提取/表格生成/问题分类/问题关键词提取/SQL生成/问答结果生成/提交生成
+
+### generate_answer_with_classify.py
+- **generate_answer函数**：对每类问题生成问答结果
+
+#### Type1（基本信息类）处理流程：
+1. 从问题对应的报表中根据关键词召回可能对应的行
+2. 对于行为字符串类型的，对比不同年份的字段内容是否相同
+3. 对于问题问是否相同的，直接返回召回的报表
+4. 对于其他的，通过prompt组合召回的报表传给模型进行回答
+
+#### Type2（统计计算类）处理流程：
+1. 如果是计算增长率，需要召回前一年的数据
+2. 将需要计算的内容转换为多个提问，得到计算公式中的每个元素
+3. 提取回答中的数值作为公式的单元，最后通过Python计算该公式
+
+#### Type3（总结推理类）处理流程：
+1. 提取问题中的关键词
+2. 进行文本的召回，采用BM25算法，分别对问题关键词和原问题进行召回
+3. 合并召回的文本块，按照和原问题的字符匹配长度取匹配度最高的文本块
+4. 组合召回的文本形成prompt传给模型进行回答
 
 ## 项目结构
 
