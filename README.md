@@ -17,23 +17,6 @@
 1. 确保安装了CUDA、cuDNN和PyTorch-GPU等基本库
 2. 安装项目依赖：
    ```bash
-   pip install -r requirements2.txt
-   ```
-3. 在运行过程中，根据缺失的个别包信息，再进行安装
-
-### 模型下载
-1. 下载chatglm2-6b和Qwen1.5-7B模型，放到目录 `./data/pretrained_models/` 下
-2. 数据准备：将allpdf解压后，目录放到 `./data/` 下
-
-### 配置文件
-修改 `config/cfg.py` 下的 `BASE_DIR` 为自己的项目绝对路径
-
-## 运行指南
-
-### 环境安装
-1. 确保安装了CUDA、cuDNN和PyTorch-GPU等基本库
-2. 安装项目依赖：
-   ```bash
    pip install -r requirements.txt
    ```
 3. 在运行过程中，根据缺失的个别包信息，再进行安装
